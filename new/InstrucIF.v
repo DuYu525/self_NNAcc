@@ -1,16 +1,5 @@
-//////////////////////////////////////////////////////////////////////////
-//////////////////module name: GEMM ACCELERATOR///////////////////////////
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-//GEMM parameter transfer:
-////_________________________________________________________________
-////|0000001 ... 011 ... 01010   |  transfer lhs_cols & lhs_rows    |////
-////|0000010 ... 011 ... 01010   |  transfer rhs_cols & dst_addr    |////
-////|0000100 ... 011 ... 01010   |  transfer lhs_addr & rhs_addr    |////
-////|____________________________|__________________________________|////
-//GEMM calculate
-////|1000000 ... 000 ... 01010   |                                  |////
-/////////////////////////////////////////////////////////////////////////
+//module name: GEMM ACCELERATOR
+//GEMM parameter transfer
 
 module InstrucIF(
     input   nice_clk,
@@ -35,6 +24,7 @@ module InstrucIF(
     output  nice_rsp_multicyc_err,
 
     input   [1:0]   state,
+    input    fin,
     output   wire  [31:0]    lhs_cols,
     output   wire  [31:0]    lhs_rows,
     output   wire  [31:0]    rhs_cols,
@@ -69,10 +59,12 @@ module InstrucIF(
     reg     [31:0]  dst_shifts_addr_buf;
 
 
-
+    //when a single-cycle instruction error occurs
     assign  nice_rsp_1cyc_err = nice_req_valid & nice_req_ready & nice_rsp_1cyc_type & (nice_req_instr[6:0] != 0101011);
 
+    
     assign  nice_req_ready = (state == 2'b00);
+    //assign outputs to calculate circuit
     assign  lhs_cols  = lhs_cols_buf;
     assign  lhs_rows  = lhs_rows_buf;
     assign  rhs_cols  = rhs_cols_buf;
@@ -80,6 +72,7 @@ module InstrucIF(
     assign  lhs_addr  = lhs_addr_buf;
     assign  rhs_addr  = rhs_addr_buf;
 
+    //store input parameter into the buffers by single-cycle instruction
     always @(negedge nice_rst_n or posedge nice_clk) begin
         if (!nice_rst_n) begin
           status_nice <= 6'b0;
@@ -210,38 +203,56 @@ module InstrucIF(
         end
     end
 
-
-assign start = nice_req_ready & nice_req_valid & (nice_req_instr[31:25]==7'b1000000);
+//multi-cycle instruction (start calculate) logic
+assign start = nice_req_ready & nice_req_valid & (nice_req_instr[31:25]==7'b1000000) & (nice_req_instr[6:0] == 0101011) & (status_nice[11:0] == 12'b1111_1111_1111);
 assign nice_rsp_1cyc_type  = ((nice_req_instr[31:25]==7'b0000001)||(nice_req_instr[31:25]==7'b0000010)||(nice_req_instr[31:25]==7'b0000100)||(nice_req_instr[31:25]==7'b0001000)||(nice_req_instr[31:25]==7'b0010000)||(nice_req_instr[31:25]==7'b0100000))? 1 : 0;
 assign nice_rsp_1cyc_dat_1 =(((nice_req_instr[31:25]==7'b0000001)||(nice_req_instr[31:25]==7'b0000010)||(nice_req_instr[31:25]==7'b0000100)||(nice_req_instr[31:25]==7'b0001000)||(nice_req_instr[31:25]==7'b0010000)||(nice_req_instr[31:25]==7'b0100000))& (nice_req_instr[6:0] == 0101011)) ? 1 :0;
 
+/*
+self_fifo_1bit u_err_fifo(
+    .sys_clk      (nice_clk)  ,
+    .sys_rst_n    (nice_rst_n)  ,
+    .data_in      (err_in)  ,
+    .wr_en        (wr_en)  ,
+    .rd_en        (rd_en)  ,
+    .data_out     (nice_rsp_multicyc_err)  ,
+    .full         ()  ,
+    .empty        ()
+);
+*/
+
+//multi-cycle instruction err (1 kind only):The input parameters are deficient 
+//which means that the results cannot be trusted, and there may be random data contaminating the memory
 reg multi_err;
 
 always @ (posedge nice_clk or negedge nice_rst_n) begin
   if (!nice_rst_n)begin
     multi_err <= 0;
-    start <= 0;
   end
   else begin
-    if (nice_req_valid && nice_req_ready) begin
-      if (nice_req_instr[6:0] != 0101011) begin
-        multi_err <= 1;
-        start <= 0;
-      end
-      else if (nice_req_instr[31:25] == 7'b1000000) begin
+    if (nice_req_valid && nice_req_ready && (nice_req_instr[31:25] == 7'b1000000) ) begin
+      if (status_nice [11:0] == 12'b1111_1111_1111 ) begin
         multi_err <= 0;
-        start <= 1;
       end
       else begin
-        multi_err <= 0;
-        start <= 0;
-      end
-    
+        multi_err <= 1;
+      end      
     end
     else begin
-      multi_err <= 0;
-      start <= 0;
+      multi_err <= multi_err;
     end
+  end
+end
+
+//multi-response channel logic
+reg nice_rsp_multicyc_valid_reg;
+assign nice_rsp_multicyc_valid = nice_rsp_multicyc_valid_reg;
+always @(posedge nice_clk) begin
+  if (fin) begin
+    nice_rsp_multicyc_valid_reg <= 1;
+  end
+  else if (nice_rsp_multicyc_ready && nice_rsp_multicyc_valid) begin
+    nice_rsp_multicyc_valid_reg <= 0;
   end
 end
 
