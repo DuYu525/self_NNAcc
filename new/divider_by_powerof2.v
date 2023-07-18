@@ -16,6 +16,9 @@ module divider_by_powerof2(
     
     
     assign divider_array[0] = dividend;
+
+
+    genvar i;
     generate
         assign divider_array[0] = dividend;
         for (i=1 ; i<32 ; i=i+1) begin

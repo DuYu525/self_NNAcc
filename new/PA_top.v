@@ -48,6 +48,9 @@ wire [12:0]  ram_addr;
 wire [16*8-1 : 0] weight_out;
 
 
+reg  [31:0]     rhs_row_sum [15:0];
+
+
 assign data_wr_acq = (state == 2'b10) ? read_rdy : 0;
 assign read_acq = (state == 2'b10) ? data_wr_rdy : weight_rd_acq;
 assign result_out = {result[3],result[2],result[1],result[0]};
@@ -152,6 +155,8 @@ generate
 endgenerate
 
 
-
+requantize_activation u_requantize_activation(
+    
+);
 
 endmodule
