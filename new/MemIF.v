@@ -24,8 +24,13 @@ inout   [31:0]  data,
 output  data_in_rdy,
 input   data_in_acq,
 input   data_out_rdy,
-output  data_out_acq
+output  data_out_acq,
 
+input   [31:0] dst_multi_addr,
+input   [31:0] dst_shifts_addr,
+input   [31:0] lhs_bias_addr,
+input   buf_wr,
+input   [1:0]  buf_wr_sel
 );
 
 assign nice_icb_cmd_valid = (state == 2'b01) ? data_in_acq :
@@ -34,7 +39,10 @@ assign nice_icb_cmd_valid = (state == 2'b01) ? data_in_acq :
                             0;
 
 assign nice_icb_cmd_addr = (state == 2'b01) ? lhs_base_addr + bias_addr:
-                           (state == 2'b10) ? rhs_base_addr + bias_addr:
+                           ((state == 2'b10)&&(!buf_wr)) ? rhs_base_addr + bias_addr:
+                           ((state == 2'b10)&&(buf_wr)&&(buf_wr_sel == 2'b00)) ? dst_shifts_addr + {28'b0,bias_addr[12:9]}:
+                           ((state == 2'b10)&&(buf_wr)&&(buf_wr_sel == 2'b01)) ? dst_multi_addr + {28'b0,bias_addr[12:9]}:
+                           ((state == 2'b10)&&(buf_wr)&&(buf_wr_sel == 2'b10)) ? lhs_bias_addr + {28'b0,bias_addr[12:9]}:
                            (state == 2'b11) ? dst_base_addr + bias_addr:
                            32'b0;
 

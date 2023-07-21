@@ -17,7 +17,15 @@ module PA_top(
 //IF to Instruction
     input   wire [31:0] rhs_rows,
     input   wire [31:0] rhs_cols,
-    input   wire [31:0] lhs_rows
+    input   wire [31:0] lhs_rows,
+
+    input   wire [31:0] lhs_offset,
+    input   wire [31:0] dst_offset,
+    input   wire [31:0] activation_min,
+    input   wire [31:0] activation_max,
+
+    output  wire buf_wr,
+    output  wire [1:0] buf_wr_sel
 );
 //u_statemachine
 wire    data_rd_rdy;
@@ -48,7 +56,37 @@ wire [12:0]  ram_addr;
 wire [16*8-1 : 0] weight_out;
 
 
-reg  [31:0]     rhs_row_sum [15:0];
+
+//ld bias_buf :10   ld dst_multi_buf : 01  ld dst_shifts_buf: 00   
+reg  [31:0]     bias_buf        [15:0];
+reg  [31:0]     dst_multi_buf   [15:0];
+reg  [31:0]     dst_shifts_buf  [15:0];
+
+reg  [31:0]     rhs_row_sum     [15:0];
+
+always @ (posedge clk or negedge rst_n) begin
+  if (!rst_n) begin
+    genvar i;
+    generate
+        for (i = 0 ; i<16 ; i= i+1) begin
+            bias_buf[i] <= 32'b0;
+            dst_multi_buf[i] <= 32'b0;
+            dst_shifts_buf[i] <= 32'b0;
+        end
+    endgenerate
+  end
+  else if (buf_wr) begin
+        if (buf_wr_sel == 2'b00) begin
+            dst_shifts_buf [wr_RAM_addr[12:9]] <= data;
+        end
+        else if (buf_wr_sel == 2'b01) begin
+            dst_multi_buf [wr_RAM_addr[12:9]] <= data;
+        end
+        else if (buf_wr_sel == 2'b10) begin
+            bias_buf [wr_RAM_addr[12:9]] <= data;
+        end
+  end
+end
 
 
 assign data_wr_acq = (state == 2'b10) ? read_rdy : 0;
@@ -115,6 +153,24 @@ PA_RAM #(13,8,16) u_PA_RAM (
     .rhs_cols       (rhs_cols),
     .we             (ram_wr)  
 );
+always @ (posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
+        genvar i;
+        generate
+            for (i = 0 ; i<16 ; i= i+1) begin
+                rhs_row_sum[i] <= 32'b0; 
+            end
+        endgenerate
+    end
+    else if (PA_en) begin
+        genvar i;
+        generate
+            for (i = 0 ; i<16 ; i= i+1) begin
+                rhs_row_sum[i] <= rhs_row_sum[i] + weightram_rdata[i]; 
+            end
+        endgenerate
+    end
+end
 
 wire [31:0] PE_result [3:0];
 genvar i;
@@ -147,16 +203,57 @@ generate
             .out_sel   (out_sel),
             .result    (PE_result[i])
             );
+        /*
         quantization u_quantization(
             .input_data (PE_result[i]),
             .output_data (result[i])
         );
+        */
+        wire [31:0] dst_multi_sel       [3:0];
+        wire [31:0] dst_shifts_sel      [3:0];
+        wire [31:0] rhs_row_sum_sel     [3:0];
+        wire [31:0] bias_sel            [3:0];
+
+        mux4_1 dst_multi_mux(
+            .data       (dst_multi[i*4+3:i*4]),
+            .sel        (out_sel[1:0]),
+            .data_sel   (dst_multi_sel[i])
+        );
+        mux4_1 dst_shifts_mux(
+            .data       (dst_shifts[i*4+3:i*4]),
+            .sel        (out_sel[1:0]),
+            .data_sel   (dst_shifts_sel[i])
+        );
+        mux4_1 rhs_row_sum_mux(
+            .data       (rhs_row_sum[i*4+3:i*4]),
+            .sel        (out_sel[1:0]),
+            .data_sel   (rhs_row_sum_sel[i])
+        );
+        mux4_1 bias_mux(
+            .data       (bias[i*4+3:i*4]),
+            .sel        (out_sel[1:0]),
+            .data_sel   (bias_sel[i])
+        );
+
+        requantize_activation u_requantize_activation(
+            .res_in         (PE_result[i]),
+            .dst_multi      (dst_multi_sel[i]),
+            .dst_shifts     (dst_shifts_sel[i]),
+            .activation_min (activation_min),
+            .activation_max (activation_max),
+            .dst_offset     (dst_offset),
+
+            .rhs_row_sum    (rhs_row_sum_sel[i]),
+            .lhs_offset     (lhs_offset),
+            .bias           (bias_sel[i]),
+            .result         (result[i])
+        );
     end
+
+
 endgenerate
 
 
-requantize_activation u_requantize_activation(
-    
-);
+
 
 endmodule

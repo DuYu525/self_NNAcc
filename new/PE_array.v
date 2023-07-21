@@ -32,6 +32,7 @@ module PE_array(
 	reg [7:0] weight_reg3_1;
 	reg [7:0] weight_reg3_2;
 
+
 	always @(posedge clk or negedge rst_n) begin
 		if(~rst_n) begin
 			data_reg1_0 <= 0;

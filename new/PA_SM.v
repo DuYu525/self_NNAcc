@@ -16,7 +16,11 @@ module PA_SM(
     output  wire [12:0]  wr_RAM_addr,
     output  PA_en,
     output  ram_wr, 
-    output  wire [1:0] state
+
+    output  buf_wr,
+    output  wire [1:0] buf_wr_sel,
+    output  wire [1:0] state,
+    output  wire rstn_row_sum
 );
 
 reg weight_rd_acq ;
@@ -28,11 +32,16 @@ reg [31:0] counter_Rhs_cols;
 
 reg [3:0] counter_rst_n;
 
+wire [31:0] buffer_wr_sel;
+assign buf_wr_sel = buffer_wr_sel[1:0];
+assign buffer_wr_sel = (state == 2'b01) ? counter_Rhs_cols - rhs_cols : 32'b0;
+
 assign wr_RAM_addr = {counter_Rhs_rows[3:0],counter_Rhs_cols[8:0]};
 assign rd_RAM_addr = {counter_Rhs_cols[8:0]};
 
 assign PA_en = data_rd_acq & data_rd_rdy;
-assign ram_wr = weight_rd_rdy & weight_rd_acq;
+assign ram_wr = weight_rd_rdy & weight_rd_acq & (counter_Rhs_cols < rhs_cols);
+assign buf_wr = weight_rd_rdy & weight_rd_acq & (counter_Rhs_cols >= rhs_cols);
 assign result_addr = counter_Result;
 assign out_weight_rd_acq = weight_rd_acq;
 assign out_dst_wr_rdy = dst_wr_rdy;
@@ -40,12 +49,17 @@ always @ (posedge clk or negedge counter_rst_n[0]) begin
     if (~counter_rst_n[0]) begin
         counter_Rhs_cols <= 32'b0;
     end
-    else if (PA_en || ram_wr) begin
+    else if (PA_en || ram_wr || buf_wr) begin
         
-        if (counter_Rhs_cols==(rhs_cols - 1)) begin
+
+        if (   (state != 2'b01) && (counter_Rhs_cols==(rhs_cols - 1))  )begin
             counter_Rhs_cols <= 32'b0;
         end
-      
+
+        //In the final of state "01", bias , dst_multi , dst_shift should be loaded in;
+        else if (counter_Rhs_cols==(rhs_cols + 2)) begin
+            counter_Rhs_cols <= 32'b0;
+        end
         else begin
             
             counter_Rhs_cols <= counter_Rhs_cols + 1;
@@ -77,7 +91,7 @@ always @ (posedge clk or negedge counter_rst_n[2]) begin
         counter_Rhs_rows <= counter_Rhs_rows + 16;
     end
     
-    else if ((state == 2'b01)&(counter_Rhs_cols==(rhs_cols-1))) begin
+    else if ((state == 2'b01)&(counter_Rhs_cols==(rhs_cols+2))) begin
         counter_Rhs_rows <= counter_Rhs_rows + 1;
     end
     else begin
@@ -177,7 +191,7 @@ always @ (*) begin
                     end 
                 end
         2'b01 : begin
-                    if ((counter_Rhs_cols==(rhs_cols-1) & (counter_Rhs_rows[3:0] == 15) )||(next_state != 2'b01))begin
+                    if ((counter_Rhs_cols==(rhs_cols+2) & (counter_Rhs_rows[3:0] == 15) )||(next_state != 2'b01))begin
                         next_state = 2'b10;
                     end
                     else begin

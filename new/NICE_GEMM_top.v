@@ -54,6 +54,10 @@ module NICE_GEMM_top (
     wire [31:0]     dst_addr;
     wire [31:0]     lhs_addr;
     wire [31:0]     rhs_addr;
+    wire [31:0]     lhs_offset;
+    wire [31:0]     dst_offset;
+    wire [31:0]     activation_min;
+    wire [31:0]     activation_max;
 
     PA_top u_PA_top(
         .clk        (nice_clk),
@@ -70,6 +74,14 @@ module NICE_GEMM_top (
         .wr_RAM_addr    (wr_RAM_addr),
         .rhs_rows       (rhs_rows),
         .lhs_rows       (lhs_rows)
+
+        .lhs_offset     (lhs_offset),
+        .dst_offset     (dst_offset),
+        .activation_min (activation_min),
+        .activation_max (activation_max),
+
+        .buf_wr                 (buf_wr),
+        .buf_wr_sel             (buf_wr_sel)
     );
 
     InstrucIF u_instrucIF(
@@ -100,12 +112,28 @@ module NICE_GEMM_top (
         .lhs_addr       (lhs_addr),
         .rhs_addr       (rhs_addr),
 
+        .lhs_offset     (lhs_offset),
+        .dst_offset     (dst_offset),
+        .activation_min (activation_min),
+        .activation_max (activation_max),
+
+        .dst_multi_addr         (dst_multi_addr),
+        .dst_shifts_addr        (dst_shifts_addr),
+        .lhs_bias_addr          (lhs_bias_addr),
+
         .start          (start)
     );
 
 
     wire [31:0] mem_data;
     wire [31:0] bias_addr;
+
+    wire [31:0] dst_multi_addr;
+    wire [31:0] dst_shifts_addr;
+    wire [31:0] lhs_bias_addr;
+    wire buf_wr;
+    wire [1:0] buf_wr_sel;
+
     assign mem_data = (!nice_icb_cmd_read) ? result_out : 'hz;
     assign data = (nice_icb_cmd_read) ? mem_data : 'hz;
     assign bias_addr = (nice_icb_cmd_read) ? {23'b0,rd_RAM_addr} : {19'b0,wr_RAM_addr};
@@ -135,7 +163,13 @@ module NICE_GEMM_top (
         .data_in_rdy            (read_rdy),
         .data_in_acq            (read_acq),
         .data_out_rdy           (write_rdy),
-        .data_out_acq           (write_acq)
+        .data_out_acq           (write_acq),
+
+        .dst_multi_addr         (dst_multi_addr),
+        .dst_shifts_addr        (dst_shifts_addr),
+        .lhs_bias_addr          (lhs_bias_addr),
+        .buf_wr                 (buf_wr),
+        .buf_wr_sel             (buf_wr_sel)
     );
 
 endmodule

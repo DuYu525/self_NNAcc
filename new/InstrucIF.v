@@ -32,6 +32,15 @@ module InstrucIF(
     output   wire  [31:0]    lhs_addr,
     output   wire  [31:0]    rhs_addr,
 
+    output   wire  [31:0]    lhs_offset,
+    output   wire  [31:0]    dst_offset,
+    output   wire  [31:0]    activation_min,
+    output   wire  [31:0]    activation_max,
+
+    output   wire [31:0] dst_multi_addr,
+    output   wire [31:0] dst_shifts_addr,
+    output   wire [31:0] lhs_bias_addr,
+
     output   reg  start
 );
 
@@ -71,6 +80,13 @@ module InstrucIF(
     assign  dst_addr  = dst_addr_buf;
     assign  lhs_addr  = lhs_addr_buf;
     assign  rhs_addr  = rhs_addr_buf;
+    assign  lhs_offset = lhs_offset_buf;
+    assign  dst_offset = dst_offset_buf;
+    assign  activation_min = activation_min_buf;
+    assign  activation_max = activation_max_buf;
+    assign  dst_multi_addr = dst_multi_addr_buf;
+    assign  dst_shifts_addr = dst_shifts_addr_buf;
+    assign  lhs_bias_addr = bias_addr_buf;
 
     //store input parameter into the buffers by single-cycle instruction
     always @(negedge nice_rst_n or posedge nice_clk) begin
