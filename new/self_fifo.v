@@ -17,15 +17,15 @@ reg [FIFO_DEPTH-1 : 0]  rd_addr;
 reg [FIFO_DEPTH-1 : 0]  num_data;
 
 always @(posedge sys_clk or negedge sys_rst_n) begin
-    if (!sys_rst_n) begin
-        genvar i;
-        generate;
-            for (i=0; i<(2**FIFO_DEPTH); i=i+1) begin
-                assign Mem[i] = 0;
+    if (~sys_rst_n) begin
+//        genvar i;
+//        generate;
+            for (integer i=0; i<(2**FIFO_DEPTH); i=i+1) begin
+                Mem[i] <= 0;
             end
-        endgenerate
+//        endgenerate
     end
-    else if ((wr_en) && (full = 1'b0)) begin
+    else if ((wr_en) && (full == 1'b0)) begin
         Mem [wr_addr] <= data_in;
     end
 end
@@ -47,7 +47,7 @@ always @(posedge sys_clk or negedge sys_rst_n) begin
         rd_addr <= rd_addr + 1;
     end
 end
-assign data_out <= Mem[rd_addr];
+assign data_out = Mem[rd_addr];
 always @(posedge sys_clk or negedge sys_rst_n) begin
     if (!sys_rst_n) begin
         num_data <= 0;

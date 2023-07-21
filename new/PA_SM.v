@@ -128,8 +128,14 @@ always @ (posedge clk or negedge rst_n) begin
     else  begin
         current_state <= next_state;
     end
-
-    if (current_state != next_state) begin
+    
+    if (!rst_n) begin
+        counter_rst_n[0] = 0;
+        counter_rst_n[1] = 0;
+        counter_rst_n[2] = 0;
+        counter_rst_n[3] = 0;
+    end
+    else if (current_state != next_state) begin
         case (current_state)
             2'b00 : begin
                 counter_rst_n[0] = 0;

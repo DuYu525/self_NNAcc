@@ -73,7 +73,8 @@ module NICE_GEMM_top (
         .rd_RAM_addr    (rd_RAM_addr),
         .wr_RAM_addr    (wr_RAM_addr),
         .rhs_rows       (rhs_rows),
-        .lhs_rows       (lhs_rows)
+        .rhs_cols       (rhs_cols),
+        .lhs_rows       (lhs_rows),
 
         .lhs_offset     (lhs_offset),
         .dst_offset     (dst_offset),
@@ -105,7 +106,7 @@ module NICE_GEMM_top (
         .nice_rsp_multicyc_err      (nice_rsp_multicyc_err),
 
         .state          (state),
-        .lhs_cols       (lhs_cols),
+        .rhs_rows       (rhs_rows),
         .lhs_rows       (lhs_rows),
         .rhs_cols       (rhs_cols),
         .dst_addr       (dst_addr),

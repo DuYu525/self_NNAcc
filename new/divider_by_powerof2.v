@@ -18,25 +18,25 @@ module divider_by_powerof2(
     assign divider_array[0] = dividend;
 
 
-    genvar i;
+    genvar i,j;
     generate
         assign divider_array[0] = dividend;
         for (i=1 ; i<32 ; i=i+1) begin
             genvar j;
-            generate
-                if (dividend[i-1] == 0) begin
-                    for(j=0; j<i; j++)begin
-                        assign divider_array[i][31-j] = 0;
-                    end
-                    assign divider_array[i][31-i : 0] = dividend[31:i];
-                end
-                else begin
-                    for(j=1; j<i; j++)begin
+            
+//                if (dividend[i-1] == 0) begin
+                    for(j=1; j<i; j=j+1)begin
                         assign divider_array[i][32-j] = 0;
                     end
-                    assign divider_array[i][32-i : 0] = {0,dividend[31:i]} + 1;
-                end
-            endgenerate
+                    assign divider_array[i][32-i : 0] = (dividend[i-1]) ? {0,dividend[31:i]} + 1 :{0,dividend[31:i]};
+//                end
+//                else begin
+//                    for(j=1; j<i; j=j+1)begin
+//                        assign divider_array[i][32-j] = 0;
+//                    end
+//                    assign divider_array[i][32-i : 0] = {0,dividend[31:i]} + 1;
+//                end
+           
         end  
     endgenerate
         

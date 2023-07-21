@@ -25,7 +25,7 @@ module InstrucIF(
 
     input   [1:0]   state,
     input    fin,
-    output   wire  [31:0]    lhs_cols,
+    output   wire  [31:0]    rhs_rows,
     output   wire  [31:0]    lhs_rows,
     output   wire  [31:0]    rhs_cols,
     output   wire  [31:0]    dst_addr,
@@ -41,17 +41,17 @@ module InstrucIF(
     output   wire [31:0] dst_shifts_addr,
     output   wire [31:0] lhs_bias_addr,
 
-    output   reg  start
+    output   wire  start
 );
 
     //status_nice 
-    //0:lhs_cols    1:lhs_rows      2:rhs_cols
+    //0:rhs_cols    1:lhs_rows      2:rhs_cols
     //3:bias_addr   4:lhs_addr      5:rhs_addr
     //6:lhs_offset  7:dst_offset    8:activation_min
     //9:activation_max  10:dst_multi_addr   11:dst_shifts_addr
     //12: dst_addr
     reg     [12:0]   status_nice;
-    reg     [31:0]  lhs_cols_buf;
+    reg     [31:0]  rhs_rows_buf;
     reg     [31:0]  lhs_rows_buf;
     reg     [31:0]  rhs_cols_buf;
     reg     [31:0]  dst_addr_buf;
@@ -70,11 +70,11 @@ module InstrucIF(
 
     //when a single-cycle instruction error occurs
     assign  nice_rsp_1cyc_err = nice_req_valid & nice_req_ready & nice_rsp_1cyc_type & (nice_req_instr[6:0] != 0101011);
-
+    assign  nice_rsp_multicyc_err = (nice_rsp_multicyc_valid & nice_rsp_multicyc_ready) ? multi_err : 0;
     
     assign  nice_req_ready = (state == 2'b00);
     //assign outputs to calculate circuit
-    assign  lhs_cols  = lhs_cols_buf;
+    assign  rhs_rows  = rhs_rows_buf;
     assign  lhs_rows  = lhs_rows_buf;
     assign  rhs_cols  = rhs_cols_buf;
     assign  dst_addr  = dst_addr_buf;
@@ -91,20 +91,26 @@ module InstrucIF(
     //store input parameter into the buffers by single-cycle instruction
     always @(negedge nice_rst_n or posedge nice_clk) begin
         if (!nice_rst_n) begin
-          status_nice <= 6'b0;
-          lhs_cols_buf <= 32'b0;
+          status_nice <= 13'b0;
+          rhs_rows_buf <= 32'b0;
           lhs_rows_buf <= 32'b0;
           rhs_cols_buf <= 32'b0;
-          dst_addr_buf <= 32'b0;
+          bias_addr_buf <= 32'b0;
           lhs_addr_buf <= 32'b0;
           rhs_addr_buf <= 32'b0;
+          lhs_offset_buf <=32'b0;
+          dst_offset_buf <=32'b0;
+          activation_min_buf <=32'b0;
+          activation_max_buf <=32'b0;
+          dst_multi_addr_buf <=32'b0;
+          dst_shifts_addr_buf <=32'b0; 
+          dst_addr_buf <=32'b0;
         end
-        else begin
-            if (nice_req_valid & nice_req_ready &  (nice_req_instr[6:0] == 0101011)) begin
+        else if (nice_req_valid & nice_req_ready &  (nice_req_instr[6:0] == 7'b0101011)) begin
                 case (nice_req_instr[31:25])
                   7'b0000001: begin
                     status_nice[1:0] <= 2'b11;
-                    lhs_cols_buf <= nice_req_rs1;
+                    rhs_rows_buf <= nice_req_rs1;
                     lhs_rows_buf <= nice_req_rs2;
                     rhs_cols_buf <= rhs_cols_buf;
                     bias_addr_buf <= bias_addr_buf;
@@ -120,7 +126,7 @@ module InstrucIF(
                   end
                   7'b0000010: begin
                     status_nice[3:2] <= 2'b11;
-                    lhs_cols_buf <= lhs_cols_buf;
+                    rhs_rows_buf <= rhs_rows_buf;
                     lhs_rows_buf <= lhs_rows_buf;
                     rhs_cols_buf <= nice_req_rs1;
                     bias_addr_buf <= nice_req_rs2;
@@ -136,7 +142,7 @@ module InstrucIF(
                   end
                   7'b0000100: begin
                     status_nice[5:4] <= 2'b11;
-                    lhs_cols_buf <= lhs_cols_buf;
+                    rhs_rows_buf <= rhs_rows_buf;
                     lhs_rows_buf <= lhs_rows_buf;
                     rhs_cols_buf <= rhs_cols_buf;
                     bias_addr_buf <= bias_addr_buf;
@@ -152,7 +158,7 @@ module InstrucIF(
                   end      
                   7'b0001000: begin
                     status_nice[7:6] <= 2'b11;
-                    lhs_cols_buf <= lhs_cols_buf;
+                    rhs_rows_buf <= rhs_rows_buf;
                     lhs_rows_buf <= lhs_rows_buf;
                     rhs_cols_buf <= rhs_cols_buf;
                     bias_addr_buf <= bias_addr_buf;
@@ -168,7 +174,7 @@ module InstrucIF(
                   end
                   7'b0010000: begin
                     status_nice[9:8] <= 2'b11;
-                    lhs_cols_buf <= lhs_cols_buf;
+                    rhs_rows_buf <= rhs_rows_buf;
                     lhs_rows_buf <= lhs_rows_buf;
                     rhs_cols_buf <= rhs_cols_buf;
                     bias_addr_buf <= bias_addr_buf;
@@ -184,7 +190,7 @@ module InstrucIF(
                   end
                   7'b0100000: begin
                     status_nice[11:10] <= 2'b11;
-                    lhs_cols_buf <= lhs_cols_buf;
+                    rhs_rows_buf <= rhs_rows_buf;
                     lhs_rows_buf <= lhs_rows_buf;
                     rhs_cols_buf <= rhs_cols_buf;
                     bias_addr_buf <= bias_addr_buf;
@@ -200,7 +206,7 @@ module InstrucIF(
                   end 
                   7'b1000000: begin
                     status_nice[12] <= 1;
-                    lhs_cols_buf <= lhs_cols_buf;
+                    rhs_rows_buf <= rhs_rows_buf;
                     lhs_rows_buf <= lhs_rows_buf;
                     rhs_cols_buf <= rhs_cols_buf;
                     bias_addr_buf <= bias_addr_buf;
@@ -215,9 +221,25 @@ module InstrucIF(
                     dst_addr_buf <= nice_req_rs1;
                   end             
                 endcase
+            end
+            else begin
+              status_nice[12] <= 1;
+              rhs_rows_buf <= rhs_rows_buf;
+              lhs_rows_buf <= lhs_rows_buf;
+              rhs_cols_buf <= rhs_cols_buf;
+              bias_addr_buf <= bias_addr_buf;
+              lhs_addr_buf <= lhs_addr_buf;
+              rhs_addr_buf <= rhs_addr_buf;
+              lhs_offset_buf <= lhs_offset_buf;
+              dst_offset_buf <= dst_offset_buf;
+              activation_min_buf <= activation_min_buf;
+              activation_max_buf <= activation_max_buf;
+              dst_multi_addr_buf <= dst_multi_addr_buf;
+              dst_shifts_addr_buf <= dst_shifts_addr_buf; 
+              dst_addr_buf <= dst_addr_buf;
             end  
         end
-    end
+    
 
 //multi-cycle instruction (start calculate) logic
 assign start = nice_req_ready & nice_req_valid & (nice_req_instr[31:25]==7'b1000000) & (nice_req_instr[6:0] == 0101011) & (status_nice[11:0] == 12'b1111_1111_1111);

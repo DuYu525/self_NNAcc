@@ -66,14 +66,49 @@ reg  [31:0]     rhs_row_sum     [15:0];
 
 always @ (posedge clk or negedge rst_n) begin
   if (!rst_n) begin
-    genvar i;
-    generate
-        for (i = 0 ; i<16 ; i= i+1) begin
-            bias_buf[i] <= 32'b0;
-            dst_multi_buf[i] <= 32'b0;
-            dst_shifts_buf[i] <= 32'b0;
-        end
-    endgenerate
+//    genvar i;
+//    generate
+//        for (i = 0 ; i<16 ; i= i+1) begin
+//            bias_buf[i] <= 32'b0;
+//            dst_multi_buf[i] <= 32'b0;
+//            dst_shifts_buf[i] <= 32'b0;
+//        end
+//    endgenerate
+            bias_buf[0] <= 32'b0;
+            dst_multi_buf[0] <= 32'b0;
+            dst_shifts_buf[0] <= 32'b0;
+            bias_buf[1] <= 32'b0;
+            dst_multi_buf[1] <= 32'b0;
+            dst_shifts_buf[1] <= 32'b0;
+            bias_buf[2] <= 32'b0;
+            dst_multi_buf[2] <= 32'b0;
+            dst_shifts_buf[2] <= 32'b0;
+            bias_buf[3] <= 32'b0;
+            dst_multi_buf[3] <= 32'b0;
+            dst_shifts_buf[3] <= 32'b0;
+            
+            bias_buf[4] <= 32'b0;
+            dst_multi_buf[4] <= 32'b0;
+            dst_shifts_buf[4] <= 32'b0;
+            bias_buf[5] <= 32'b0;
+            dst_multi_buf[5] <= 32'b0;
+            dst_shifts_buf[5] <= 32'b0;
+            bias_buf[6] <= 32'b0;
+            dst_multi_buf[6] <= 32'b0;
+            dst_shifts_buf[6] <= 32'b0;
+            bias_buf[7] <= 32'b0;
+            dst_multi_buf[7] <= 32'b0;
+            dst_shifts_buf[7] <= 32'b0;
+            
+            bias_buf[8] <= 32'b0; dst_multi_buf[8] <= 32'b0; dst_shifts_buf[8] <= 32'b0;
+            bias_buf[9] <= 32'b0; dst_multi_buf[9] <= 32'b0; dst_shifts_buf[9] <= 32'b0;
+            bias_buf[10] <= 32'b0; dst_multi_buf[10] <= 32'b0; dst_shifts_buf[10] <= 32'b0;
+            bias_buf[11] <= 32'b0; dst_multi_buf[11] <= 32'b0; dst_shifts_buf[11] <= 32'b0;
+            bias_buf[12] <= 32'b0; dst_multi_buf[12] <= 32'b0; dst_shifts_buf[12] <= 32'b0;
+            bias_buf[13] <= 32'b0; dst_multi_buf[13] <= 32'b0; dst_shifts_buf[13] <= 32'b0;
+            bias_buf[14] <= 32'b0; dst_multi_buf[14] <= 32'b0; dst_shifts_buf[14] <= 32'b0;
+            bias_buf[15] <= 32'b0; dst_multi_buf[15] <= 32'b0; dst_shifts_buf[15] <= 32'b0;
+            
   end
   else if (buf_wr) begin
         if (buf_wr_sel == 2'b00) begin
@@ -153,27 +188,36 @@ PA_RAM #(13,8,16) u_PA_RAM (
     .rhs_cols       (rhs_cols),
     .we             (ram_wr)  
 );
+genvar i;
+generate
+for (i = 0 ; i<16 ; i= i+1) begin
 always @ (posedge clk or negedge rst_n) begin
     if (~rst_n) begin
-        genvar i;
-        generate
-            for (i = 0 ; i<16 ; i= i+1) begin
+//        genvar i;
+//        generate
+//            for (i = 0 ; i<16 ; i= i+1) begin
                 rhs_row_sum[i] <= 32'b0; 
-            end
-        endgenerate
+//            end
+//        endgenerate
     end
     else if (PA_en) begin
-        genvar i;
-        generate
-            for (i = 0 ; i<16 ; i= i+1) begin
+//        genvar i;
+//        generate
+            
                 rhs_row_sum[i] <= rhs_row_sum[i] + weightram_rdata[i]; 
-            end
-        endgenerate
+            
+//        endgenerate
     end
 end
+end
+endgenerate
 
+   wire [31:0] dst_multi_sel       [3:0];
+        wire [31:0] dst_shifts_sel      [3:0];
+        wire [31:0] rhs_row_sum_sel     [3:0];
+        wire [31:0] bias_sel            [3:0];
 wire [31:0] PE_result [3:0];
-genvar i;
+//genvar i;
 generate
     /*
     for (i=0; i <16; i++) begin
@@ -209,28 +253,37 @@ generate
             .output_data (result[i])
         );
         */
-        wire [31:0] dst_multi_sel       [3:0];
-        wire [31:0] dst_shifts_sel      [3:0];
-        wire [31:0] rhs_row_sum_sel     [3:0];
-        wire [31:0] bias_sel            [3:0];
+     
 
         mux4_1 dst_multi_mux(
-            .data       (dst_multi[i*4+3:i*4]),
+            .data3       (dst_multi_buf[i*4+3]),
+            .data2       (dst_multi_buf[i*4+2]),
+            .data1      (dst_multi_buf[i*4+1]),
+            .data0      (dst_multi_buf[i*4]),
             .sel        (out_sel[1:0]),
             .data_sel   (dst_multi_sel[i])
         );
         mux4_1 dst_shifts_mux(
-            .data       (dst_shifts[i*4+3:i*4]),
+            .data3       (dst_shifts_buf[i*4+3]),
+            .data2      (dst_shifts_buf[i*4+2]),
+            .data1      (dst_shifts_buf[i*4+1]),
+            .data0      (dst_shifts_buf[i*4]),
             .sel        (out_sel[1:0]),
             .data_sel   (dst_shifts_sel[i])
         );
         mux4_1 rhs_row_sum_mux(
-            .data       (rhs_row_sum[i*4+3:i*4]),
+            .data3       (rhs_row_sum[i*4+3]),
+            .data2      (rhs_row_sum[i*4+2]),
+            .data1      (rhs_row_sum[i*4+1]),
+            .data0      (rhs_row_sum[i*4]),
             .sel        (out_sel[1:0]),
             .data_sel   (rhs_row_sum_sel[i])
         );
         mux4_1 bias_mux(
-            .data       (bias[i*4+3:i*4]),
+            .data3       (bias_buf[i*4+3]),
+            .data2       (bias_buf[i*4+2]),
+            .data1       (bias_buf[i*4+1]),
+            .data0       (bias_buf[i*4]),
             .sel        (out_sel[1:0]),
             .data_sel   (bias_sel[i])
         );
