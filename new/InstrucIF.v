@@ -223,7 +223,6 @@ module InstrucIF(
                 endcase
             end
             else begin
-              status_nice[12] <= 1;
               rhs_rows_buf <= rhs_rows_buf;
               lhs_rows_buf <= lhs_rows_buf;
               rhs_cols_buf <= rhs_cols_buf;
@@ -242,7 +241,7 @@ module InstrucIF(
     
 
 //multi-cycle instruction (start calculate) logic
-assign start = nice_req_ready & nice_req_valid & (nice_req_instr[31:25]==7'b1000000) & (nice_req_instr[6:0] == 0101011) & (status_nice[11:0] == 12'b1111_1111_1111);
+assign start = nice_req_ready && nice_req_valid && (nice_req_instr[31:25]==7'b1000000) && (nice_req_instr[6:0] == 7'b0101011) && (status_nice[11:0] == 12'b1111_1111_1111);
 assign nice_rsp_1cyc_type  = ((nice_req_instr[31:25]==7'b0000001)||(nice_req_instr[31:25]==7'b0000010)||(nice_req_instr[31:25]==7'b0000100)||(nice_req_instr[31:25]==7'b0001000)||(nice_req_instr[31:25]==7'b0010000)||(nice_req_instr[31:25]==7'b0100000))? 1 : 0;
 assign nice_rsp_1cyc_dat_1 =(((nice_req_instr[31:25]==7'b0000001)||(nice_req_instr[31:25]==7'b0000010)||(nice_req_instr[31:25]==7'b0000100)||(nice_req_instr[31:25]==7'b0001000)||(nice_req_instr[31:25]==7'b0010000)||(nice_req_instr[31:25]==7'b0100000))& (nice_req_instr[6:0] == 0101011)) ? 1 :0;
 
@@ -285,8 +284,12 @@ end
 //multi-response channel logic
 reg nice_rsp_multicyc_valid_reg;
 assign nice_rsp_multicyc_valid = nice_rsp_multicyc_valid_reg;
-always @(posedge nice_clk) begin
-  if (fin) begin
+
+always @(posedge nice_clk or negedge nice_rst_n) begin
+  if (!nice_rst_n)begin
+    nice_rsp_multicyc_valid_reg <= 0;
+  end
+  else if (fin) begin
     nice_rsp_multicyc_valid_reg <= 1;
   end
   else if (nice_rsp_multicyc_ready && nice_rsp_multicyc_valid) begin
