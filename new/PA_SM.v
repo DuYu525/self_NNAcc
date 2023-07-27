@@ -14,6 +14,8 @@ module PA_SM(
     output  wire [3:0] result_addr,
     output  wire [8:0] rd_RAM_addr,
     output  wire [12:0]  wr_RAM_addr,
+    output  wire [31:0]  mem_bias_addr,
+    output  wire [31:0]  buf_bias_addr,
     output  PA_en,
     output  ram_wr, 
 
@@ -37,6 +39,13 @@ assign buf_wr_sel = buffer_wr_sel[1:0];
 assign buffer_wr_sel = (state == 2'b01) ? counter_Rhs_cols - rhs_cols : 32'b0;
 
 assign wr_RAM_addr = {counter_Rhs_rows[3:0],counter_Rhs_cols[8:0]};
+
+assign mem_bias_addr = (state == 2'b01) ? (counter_Rhs_rows * rhs_cols + counter_Rhs_cols):
+                     (state == 2'b10) ? (counter_Lhs_rows * rhs_cols + counter_Rhs_cols):
+                     (state == 2'b11) ? ((counter_Rhs_rows-16)/4*lhs_rows + (counter_Lhs_rows-4)*4 +{28'b0,counter_Result}):0;
+
+assign buf_bias_addr = counter_Rhs_rows;
+
 assign rd_RAM_addr = {counter_Rhs_cols[8:0]};
 
 assign PA_en = data_rd_acq & data_rd_rdy;
@@ -45,6 +54,7 @@ assign buf_wr = weight_rd_rdy & weight_rd_acq & (counter_Rhs_cols >= rhs_cols);
 assign result_addr = counter_Result;
 assign out_weight_rd_acq = weight_rd_acq;
 assign out_dst_wr_rdy = dst_wr_rdy;
+
 always @ (posedge clk or negedge counter_rst_n[0]) begin
     if (~counter_rst_n[0]) begin
         counter_Rhs_cols <= 32'b0;

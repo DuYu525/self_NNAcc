@@ -89,8 +89,8 @@ module GEMM_tb  (
         nice_req_valid = 1;
         nice_rsp_multicyc_ready = 1;
         nice_req_instr= {7'b0000001,5'b0,5'b0,3'b011,5'b0,7'b0101011};
-        nice_req_rs1= 1;
-        nice_req_rs2= 2;
+        nice_req_rs1= 32;
+        nice_req_rs2= 32;
         nice_icb_cmd_ready = 1;
         nice_icb_rsp_valid = 1;
 
@@ -100,7 +100,7 @@ module GEMM_tb  (
         nice_req_valid = 1;
         nice_rsp_multicyc_ready = 1;
         nice_req_instr= {7'b0000010,5'b0,5'b0,3'b011,5'b0,7'b0101011};
-        nice_req_rs1= 3;
+        nice_req_rs1= 32;
         nice_req_rs2= 4;
 
         #10;

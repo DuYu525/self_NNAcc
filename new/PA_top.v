@@ -14,6 +14,8 @@ module PA_top(
     output  wire [1:0] state,
     output  wire    [8:0]   rd_RAM_addr,
     output  wire    [12:0]  wr_RAM_addr ,
+    output  wire    [31:0]  mem_bias_addr,
+    output  wire    [31:0]  buf_bias_addr,
 //IF to Instruction
     input   wire [31:0] rhs_rows,
     input   wire [31:0] rhs_cols,
@@ -162,9 +164,13 @@ PA_SM u_statemachine(
     .result_addr    (out_sel),
     .rd_RAM_addr    (rd_RAM_addr),
     .wr_RAM_addr    (wr_RAM_addr),
+    .mem_bias_addr  (mem_bias_addr),
+    .buf_bias_addr  (buf_bias_addr),    
     .PA_en          (PA_en),
     .ram_wr         (ram_wr), 
-    .state          (state)
+    .state          (state),
+    .buf_wr         (buf_wr),
+    .buf_wr_sel     (buf_wr_sel)
 );
 
 pingpang_buffer #(8,2,2) u_pingpangbuffer(

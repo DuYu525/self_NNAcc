@@ -59,6 +59,9 @@ module NICE_GEMM_top (
     wire [31:0]     activation_min;
     wire [31:0]     activation_max;
 
+    wire [31:0]     buf_bias_addr;
+
+    wire    [31:0]  mem_bias_addr;
     PA_top u_PA_top(
         .clk        (nice_clk),
         .rst_n      (nice_rst_n),
@@ -72,6 +75,8 @@ module NICE_GEMM_top (
         .state      (state),
         .rd_RAM_addr    (rd_RAM_addr),
         .wr_RAM_addr    (wr_RAM_addr),
+        .mem_bias_addr  (mem_bias_addr),
+        .buf_bias_addr  (buf_bias_addr),
         .rhs_rows       (rhs_rows),
         .rhs_cols       (rhs_cols),
         .lhs_rows       (lhs_rows),
@@ -137,7 +142,7 @@ module NICE_GEMM_top (
 
     assign mem_data = (!nice_icb_cmd_read) ? result_out : 'hz;
     assign data = (nice_icb_cmd_read) ? mem_data : 'hz;
-    assign bias_addr = (nice_icb_cmd_read) ? {23'b0,rd_RAM_addr} : {19'b0,wr_RAM_addr};
+    assign bias_addr = buf_wr ? buf_bias_addr : mem_bias_addr;
 
     MemIF u_MemIF(
         .nice_clk       (nice_clk),
