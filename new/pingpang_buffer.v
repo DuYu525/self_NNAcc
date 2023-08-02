@@ -7,7 +7,7 @@ module pingpang_buffer #(parameter DWIDTH=8, AWIDTH_r=2, AWIDTH_w=2)
     input  wire [31:0] wr_data,
     input  wire rd_acq,
     output wire rd_rdy,
-    output wire [(2**AWIDTH_r)*DWIDTH - 1:0] rd_data
+    output reg [(2**AWIDTH_r)*DWIDTH - 1:0] rd_data
 );
 
     reg [DWIDTH-1:0] array_reg0 [(2**(AWIDTH_r))*(2**(AWIDTH_w))-1:0];
@@ -29,6 +29,8 @@ module pingpang_buffer #(parameter DWIDTH=8, AWIDTH_r=2, AWIDTH_w=2)
 
     wire wr_cs,rd_cs;
 
+    wire [(2**AWIDTH_r)*DWIDTH - 1:0]  rd_data_wire;
+
     assign rd_rdy = flag0[0] || flag1[0];
     assign wr_rdy = (!flag0[0]) || (!flag1[0]);
     assign wr_cs  = (flag0 == 2'b10) ? 0: 
@@ -40,12 +42,14 @@ module pingpang_buffer #(parameter DWIDTH=8, AWIDTH_r=2, AWIDTH_w=2)
                     (flag0 == 2'b01) ? 0:
                     1;
 
-
+    always @(posedge clk) begin
+        rd_data <= rd_data_wire;
+    end
     //read & write logic
     genvar i;
     generate
         for (i=0; i<(2**AWIDTH_r); i=i+1) begin
-            assign rd_data [(i+1)*DWIDTH - 1:i*DWIDTH] = rd_cs  ?   array_reg1[rd_addr + i * (2**AWIDTH_w)]:
+            assign rd_data_wire [(i+1)*DWIDTH - 1:i*DWIDTH] = rd_cs  ?   array_reg1[rd_addr + i * (2**AWIDTH_w)]:
                                                                     array_reg0[rd_addr + i * (2**AWIDTH_w)];
         end
     endgenerate
@@ -54,10 +58,10 @@ module pingpang_buffer #(parameter DWIDTH=8, AWIDTH_r=2, AWIDTH_w=2)
         if (wr_acq & wr_rdy) 
         begin
             if (!flag0[0])begin
-                {array_reg0 [wr_addr0 * (2**AWIDTH_r) + wr_addr1 + 3] , array_reg0 [wr_addr0 * (2**AWIDTH_r) + wr_addr1 + 2] , array_reg0 [wr_addr0 * (2**AWIDTH_r) + wr_addr1 + 1] , array_reg0 [wr_addr0 * (2**AWIDTH_r) + wr_addr1 + 0] } <= wr_data;
+                {array_reg0 [wr_addr0 * (2**AWIDTH_r) + wr_addr1 + 0] , array_reg0 [wr_addr0 * (2**AWIDTH_r) + wr_addr1 + 1] , array_reg0 [wr_addr0 * (2**AWIDTH_r) + wr_addr1 + 2] , array_reg0 [wr_addr0 * (2**AWIDTH_r) + wr_addr1 + 3] } <= wr_data;
             end
             else if (!flag1[0]) begin
-                {array_reg1 [wr_addr0 * (2**AWIDTH_r) + wr_addr1 + 3] , array_reg1 [wr_addr0 * (2**AWIDTH_r) + wr_addr1 + 2] , array_reg1 [wr_addr0 * (2**AWIDTH_r) + wr_addr1 + 1] , array_reg1 [wr_addr0 * (2**AWIDTH_r) + wr_addr1 + 0] } <= wr_data;
+                {array_reg1 [wr_addr0 * (2**AWIDTH_r) + wr_addr1 + 0] , array_reg1 [wr_addr0 * (2**AWIDTH_r) + wr_addr1 + 1] , array_reg1 [wr_addr0 * (2**AWIDTH_r) + wr_addr1 + 2] , array_reg1 [wr_addr0 * (2**AWIDTH_r) + wr_addr1 + 3] } <= wr_data;
             end
         end
     end    

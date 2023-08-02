@@ -33,17 +33,19 @@ input   buf_wr,
 input   [1:0]  buf_wr_sel
 );
 
+reg [31:0] data_buf ;
+reg  wr_en;
 assign nice_icb_cmd_valid = (state == 2'b01) ? data_in_acq :
                             (state == 2'b10) ? data_in_acq :
                             (state == 2'b11) ? data_out_rdy :
                             0;
 
-assign nice_icb_cmd_addr = (state == 2'b01) ? lhs_base_addr + bias_addr:
-                           ((state == 2'b10)&&(!buf_wr)) ? rhs_base_addr + bias_addr:
-                           ((state == 2'b10)&&(buf_wr)&&(buf_wr_sel == 2'b00)) ? dst_shifts_addr + {28'b0,bias_addr[12:9]}:
-                           ((state == 2'b10)&&(buf_wr)&&(buf_wr_sel == 2'b01)) ? dst_multi_addr + {28'b0,bias_addr[12:9]}:
-                           ((state == 2'b10)&&(buf_wr)&&(buf_wr_sel == 2'b10)) ? lhs_bias_addr + {28'b0,bias_addr[12:9]}:
-                           (state == 2'b11) ? dst_base_addr + bias_addr:
+assign nice_icb_cmd_addr = (state == 2'b10) ? lhs_base_addr + bias_addr*4:
+                           ((state == 2'b01)&&(!buf_wr)) ? rhs_base_addr + bias_addr*4:
+                           ((state == 2'b01)&&(buf_wr)&&(buf_wr_sel == 2'b00)) ? dst_shifts_addr + {28'b0,bias_addr[12:9]}*4:
+                           ((state == 2'b01)&&(buf_wr)&&(buf_wr_sel == 2'b01)) ? dst_multi_addr + {28'b0,bias_addr[12:9]}*4:
+                           ((state == 2'b01)&&(buf_wr)&&(buf_wr_sel == 2'b10)) ? lhs_bias_addr + {28'b0,bias_addr[12:9]}*4:
+                           (state == 2'b11) ? dst_base_addr + bias_addr*4:
                            32'b0;
 
 assign nice_icb_cmd_read = (state == 2'b11) ? 0 : 1; 
@@ -51,14 +53,26 @@ assign nice_icb_cmd_read = (state == 2'b11) ? 0 : 1;
 assign nice_icb_cmd_wdata = (state == 2'b11) ? data : 'hz;
 
 assign nice_icb_cmd_size = 2'b10;
+/*
+always @(posedge nice_clk or negedge nice_rst_n) begin
+    if (!nice_rst_n) begin
+        wr_en <= 0;
+        data_buf <= 0;
+    end
+        data_buf <= (state == 2'b10) ? nice_icb_rsp_rdata:
+                    (state == 2'b01) ? nice_icb_rsp_rdata : 0 ;
+        wr_en <= (state == 2'b10) || (state == 2'b01);
+end
 
-assign data =   (state == 2'b10) ? nice_icb_rsp_rdata:
-                (state == 2'b01) ? nice_icb_rsp_rdata:
+assign data =   wr_en ? data_buf:
                 'hz;
+*/
 
+assign data = (state == 2'b10) ? nice_icb_rsp_rdata:
+              (state == 2'b01) ? nice_icb_rsp_rdata : 'hz ;
 assign data_in_rdy = ((state == 2'b01) || (state == 2'b10)) ? (nice_icb_rsp_valid & (!nice_icb_rsp_err)) :0;
 
-assign data_out_acq = (state == 2'b11) ? nice_icb_rsp_valid :0;
+assign data_out_acq = (state == 2'b11) ? nice_icb_cmd_ready :0;
 
 always @(posedge nice_clk or negedge nice_rst_n) begin
     if(!nice_rst_n)begin

@@ -20,7 +20,6 @@ module PA_top(
     input   wire [31:0] rhs_rows,
     input   wire [31:0] rhs_cols,
     input   wire [31:0] lhs_rows,
-
     input   wire [31:0] lhs_offset,
     input   wire [31:0] dst_offset,
     input   wire [31:0] activation_min,
@@ -41,20 +40,27 @@ wire    dst_wr_acq;
 wire    PA_en;
 wire    ram_wr;
 
+wire    pingpang_rd;
+
+
 //u_pingpangbuffer
 wire    data_wr_acq;
 wire    data_wr_rdy;
 wire    [31:0] data_wr_data;
 wire    [31:0] data_rd_data;
+wire    pingpang_wr;
+assign  pingpang_rd = (data_wr_acq & data_wr_rdy) ;
+
 
 //PE_array
-wire    [7:0]   databuffer_rdata [3:0] ;
+reg    [7:0]   databuffer_rdata [3:0] ;
 wire    [7:0]   weightram_rdata [15:0] ;
 wire    [3:0]   out_sel ;
 wire    [7:0]  result [3:0] ;
+wire    PA_rst_n;
 
 //PA_RAM
-wire [12:0]  ram_addr;
+reg [12:0]  ram_addr;
 wire [16*8-1 : 0] weight_out;
 
 
@@ -125,19 +131,34 @@ always @ (posedge clk or negedge rst_n) begin
   end
 end
 
-
-assign data_wr_acq = (state == 2'b10) ? read_rdy : 0;
+reg   pingpang_wr_buf;
+always @ (posedge clk) begin
+    pingpang_wr_buf <= pingpang_wr;
+end
+assign data_wr_acq = (pingpang_wr_buf) ? read_rdy : 0;
 assign read_acq = (state == 2'b10) ? data_wr_rdy : weight_rd_acq;
+assign data_wr_data = data;
 assign result_out = {result[3],result[2],result[1],result[0]};
 assign write_rdy = dst_wr_rdy;
 assign dst_wr_acq = write_acq;
-assign data_wr_data = data;
-assign {databuffer_rdata[3] ,  databuffer_rdata[2] ,databuffer_rdata[1] ,databuffer_rdata[0] } = data_rd_data;
+
+always @(posedge clk) begin
+    {databuffer_rdata[3] ,  databuffer_rdata[2] ,databuffer_rdata[1] ,databuffer_rdata[0] } <= data_rd_data;
+end
 assign {weightram_rdata[15] , weightram_rdata[14] ,weightram_rdata[13] ,weightram_rdata[12],
         weightram_rdata[11] , weightram_rdata[10] ,weightram_rdata[9] ,weightram_rdata[8] ,
         weightram_rdata[7] , weightram_rdata[6] ,weightram_rdata[5] ,weightram_rdata[4] ,
         weightram_rdata[3] , weightram_rdata[2] ,weightram_rdata[1] ,weightram_rdata[0] } = weight_out;
-assign ram_addr = ram_wr ? wr_RAM_addr : {4'b0,rd_RAM_addr};
+
+
+always @ (posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+        ram_addr <= 0;
+    end
+    else begin
+        ram_addr <= ram_wr ? wr_RAM_addr : {4'b0,rd_RAM_addr};
+    end
+end
 //16 RAMS instantiated separately (replaced by a combined-RAM)
 /*
 genvar i;
@@ -155,6 +176,8 @@ PA_SM u_statemachine(
     .rhs_rows       (rhs_rows),
     .rhs_cols       (rhs_cols),
     .lhs_rows       (lhs_rows),
+    .pingpang_rd    (pingpang_rd),
+    .pingpang_wr  (pingpang_wr),
     .data_rd_rdy    (data_rd_rdy),
     .data_rd_acq    (data_rd_acq),
     .weight_rd_rdy  (weight_rd_rdy),
@@ -170,13 +193,22 @@ PA_SM u_statemachine(
     .ram_wr         (ram_wr), 
     .state          (state),
     .buf_wr         (buf_wr),
-    .buf_wr_sel     (buf_wr_sel)
-);
+    .buf_wr_sel     (buf_wr_sel),
 
+    .PA_rst_n       (PA_rst_n)
+);
+reg buf_wr_acq;
+
+always @ (posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+        buf_wr_acq <= 0;
+    end
+        buf_wr_acq <= data_wr_acq;
+end
 pingpang_buffer #(8,2,2) u_pingpangbuffer(
     .clk            (clk),
     .rst_n          (rst_n),
-    .wr_acq         (data_wr_acq),
+    .wr_acq         (buf_wr_acq),
     .wr_rdy         (data_wr_rdy),
     .wr_data        (data_wr_data),
     .rd_acq         (data_rd_acq),
@@ -184,7 +216,15 @@ pingpang_buffer #(8,2,2) u_pingpangbuffer(
     .rd_data        (data_rd_data)
 );
 
-
+reg ram_wr_in;
+always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+        ram_wr_in <= 0;
+    end
+    else begin
+        ram_wr_in <= ram_wr;
+    end
+end
 
 PA_RAM #(13,8,16) u_PA_RAM (
     .clk            (clk),
@@ -192,7 +232,7 @@ PA_RAM #(13,8,16) u_PA_RAM (
     .data_in        (data),
     .data_out       (weight_out),
     .rhs_cols       (rhs_cols),
-    .we             (ram_wr)  
+    .we             (ram_wr_in)  
 );
 genvar i;
 generate
@@ -237,11 +277,16 @@ generate
         );
     end
     */
+    reg PA_en_in;
+    always @(posedge clk) begin
+        PA_en_in <= PA_en;
+    end
+
     for(i=0; i<4; i=i+1) begin
         PE_array u_PE_array(
             .clk       (clk),
-            .rst_n     (rst_n),
-            .en        (PA_en),
+            .rst_n     (PA_rst_n),
+            .en        (PA_en_in),
             .data_in0  (databuffer_rdata[0]),
             .data_in1  (databuffer_rdata[1]),
             .data_in2  (databuffer_rdata[2]),

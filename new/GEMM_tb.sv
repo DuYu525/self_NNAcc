@@ -27,12 +27,13 @@ module GEMM_tb  (
     wire nice_icb_cmd_valid;
     wire [31:0] nice_icb_cmd_addr;
     wire nice_icb_cmd_read;
-    wire [31:0] nice_icb_cmd_wdata;
+    reg [31:0] nice_icb_cmd_wdata;
     wire [1:0] nice_icb_cmd_size;
     wire nice_mem_holdup;
     
     wire nice_icb_rsp_ready;
 
+    reg  [7:0] mem_tb [4095 : 0];
 
     NICE_GEMM_top u_NICE_GEMM(
         .nice_clk   (clk),
@@ -72,13 +73,60 @@ module GEMM_tb  (
 
     always #5 clk = ~clk;
 
+    always @(posedge clk) begin
+      nice_icb_rsp_rdata <= {mem_tb [nice_icb_cmd_addr] , mem_tb [nice_icb_cmd_addr+1] , mem_tb [nice_icb_cmd_addr+2] , mem_tb [nice_icb_cmd_addr+3]} ;
+      nice_icb_rsp_valid = nice_icb_rsp_ready;
+    end 
+    
+    reg [31:0] lhs_addr;
+    reg [31:0] rhs_addr;
+    reg [31:0] lhs_bias_addr;
+    reg [31:0] dst_multi_addr;
+    reg [31:0] dst_shifts_addr;
+    reg [31:0] dst_addr;
+
+
+
     initial begin
+         int i , j;
+            //lhs matrix  addr = 0
+            lhs_addr = 0;
+            for (i = 1; i < 33 ; i=i+1 ) begin
+                for (j = 1; j<33 ; j=j+1) begin
+                  mem_tb [(i-1)*32+j-1] = i+j-1;
+                end
+            end
+            //rhs_matrix  addr = 32*32  1280
+            rhs_addr = 32*32;
+            for (i = 1; i < 33 ; i=i+1 ) begin
+                for (j = 1; j<33 ; j=j+1) begin
+                  mem_tb [(i-1)*32+j-1+rhs_addr] = i+j-1;
+                end
+            end
+            //bias
+            lhs_bias_addr = 32*32*2;
+            for (i = 32*32*2 ; i<32*32*2+31; i=i+1) begin
+                mem_tb [i] = 1;
+            end
+            //dst_multi
+            dst_multi_addr = 32*32*2 + 32;
+            for (i = 32*32*2 + 32; i<32*32*2+63; i=i+1) begin
+                mem_tb [i] = 100000;
+            end
+            //dst_shifts
+            dst_shifts_addr = 32*32*2 + 64;
+            for (i = 32*32*2 + 64; i<32*32*2+95; i=i+1) begin
+                mem_tb [i] = 1;
+            end
+            //dst _addr: 32*32*3
+            dst_addr = 32*32*3;
+       
         clk = 0;
         rst_n = 0;
         nice_req_valid = 0;
         nice_rsp_multicyc_ready = 0;
         nice_icb_cmd_ready = 0;
-        nice_icb_rsp_valid = 0;
+        
         nice_icb_rsp_rdata = 0;
         nice_icb_rsp_err = 0;
         #15;
@@ -92,7 +140,7 @@ module GEMM_tb  (
         nice_req_rs1= 32;
         nice_req_rs2= 32;
         nice_icb_cmd_ready = 1;
-        nice_icb_rsp_valid = 1;
+        
 
         #10;
         wait (clk == 1);
@@ -101,7 +149,7 @@ module GEMM_tb  (
         nice_rsp_multicyc_ready = 1;
         nice_req_instr= {7'b0000010,5'b0,5'b0,3'b011,5'b0,7'b0101011};
         nice_req_rs1= 32;
-        nice_req_rs2= 4;
+        nice_req_rs2= lhs_bias_addr;
 
         #10;
         wait (clk == 1);
@@ -109,8 +157,8 @@ module GEMM_tb  (
         nice_req_valid = 1;
         nice_rsp_multicyc_ready = 1;
         nice_req_instr= {7'b0000100,5'b0,5'b0,3'b011,5'b0,7'b0101011};
-        nice_req_rs1= 5;
-        nice_req_rs2= 6;
+        nice_req_rs1= lhs_addr;
+        nice_req_rs2= rhs_addr;
 
         #10;
         wait (clk == 1);
@@ -118,8 +166,8 @@ module GEMM_tb  (
         nice_req_valid = 1;
         nice_rsp_multicyc_ready = 1;
         nice_req_instr= {7'b0001000,5'b0,5'b0,3'b011,5'b0,7'b0101011};
-        nice_req_rs1= 7;
-        nice_req_rs2= 8;
+        nice_req_rs1= 1;
+        nice_req_rs2= 1;
 
         #10;
         wait (clk == 1);
@@ -127,8 +175,8 @@ module GEMM_tb  (
         nice_req_valid = 1;
         nice_rsp_multicyc_ready = 1;
         nice_req_instr= {7'b0010000,5'b0,5'b0,3'b011,5'b0,7'b0101011};
-        nice_req_rs1= 9;
-        nice_req_rs2= 10;
+        nice_req_rs1= 1;
+        nice_req_rs2= 32'b1111_1111_1111_1111_1111_1111_1111_1111;
     
 
         #10;
@@ -137,8 +185,8 @@ module GEMM_tb  (
         nice_req_valid = 1;
         nice_rsp_multicyc_ready = 1;
         nice_req_instr= {7'b0100000,5'b0,5'b0,3'b011,5'b0,7'b0101011};
-        nice_req_rs1= 11;
-        nice_req_rs2= 12;
+        nice_req_rs1= dst_multi_addr;
+        nice_req_rs2= dst_shifts_addr;
 
         #10;
         wait (clk == 1);
@@ -146,7 +194,7 @@ module GEMM_tb  (
         nice_req_valid = 1;
         nice_rsp_multicyc_ready = 1;
         nice_req_instr= {7'b1000000,5'b0,5'b0,3'b010,5'b0,7'b0101011};
-        nice_req_rs1= 13;
+        nice_req_rs1= dst_addr;
         nice_req_rs2= 14;
         
         #100;
