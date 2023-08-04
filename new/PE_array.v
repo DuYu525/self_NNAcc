@@ -2,17 +2,37 @@ module PE_array(
 	input wire clk,
 	input wire rst_n,
 	input wire en,
-	input wire [7:0] data_in0,
-	input wire [7:0] data_in1,
-	input wire [7:0] data_in2,
-	input wire [7:0] data_in3,
-	input wire [7:0] weight_in0,
-	input wire [7:0] weight_in1,
-	input wire [7:0] weight_in2,
-	input wire [7:0] weight_in3,
+	input wire [7:0] data_in0_w,
+	input wire [7:0] data_in1_w,
+	input wire [7:0] data_in2_w,
+	input wire [7:0] data_in3_w,
+	input wire [7:0] weight_in0_w,
+	input wire [7:0] weight_in1_w,
+	input wire [7:0] weight_in2_w,
+	input wire [7:0] weight_in3_w,
 	input wire [3:0] out_sel,
 	output  wire [31:0] result
 	);
+
+	wire [7:0] data_in0;
+	wire [7:0] data_in1;
+	wire [7:0] data_in2;
+	wire [7:0] data_in3;
+	wire [7:0] weight_in0;
+	wire [7:0] weight_in1;
+	wire [7:0] weight_in2;
+	wire [7:0] weight_in3;
+
+	assign data_in0 = en ? data_in0_w : 0;
+	assign data_in1 = en ? data_in1_w : 0;
+	assign data_in2 = en ? data_in2_w : 0;
+	assign data_in3 = en ? data_in3_w : 0;
+
+	assign weight_in0 = en ? weight_in0_w : 0;
+	assign weight_in1 = en ? weight_in1_w : 0;
+	assign weight_in2 = en ? weight_in2_w : 0;
+	assign weight_in3 = en ? weight_in3_w : 0;
+
 
 	wire [7:0] tmp_data [11:0];
 	wire [7:0] tmp_weight [11:0];
@@ -48,7 +68,7 @@ module PE_array(
 			weight_reg3_1 <= 0;
 			weight_reg3_2 <= 0;
 		end
-		else if(en) begin
+		else  begin
 			data_reg1_0 <= data_in1;
 			data_reg2_0 <= data_in2;
 			data_reg2_1 <= data_reg2_0;
@@ -67,7 +87,7 @@ module PE_array(
 	PE u0_PE(
 		.clk       (clk),
 		.rst_n     (rst_n),
-		.en        (en),
+		.en        (1),
 		.data_in   (data_in0),
 		.data_out  (tmp_data[0]),
 		.weight_in (weight_in0),
@@ -77,7 +97,7 @@ module PE_array(
 	PE u1_PE(
 		.clk       (clk),
 		.rst_n     (rst_n),
-		.en        (en),
+		.en        (1),
 		.data_in   (data_reg1_0),
 		.data_out  (tmp_data[1]),
 		.weight_in (tmp_weight[0]),
@@ -87,7 +107,7 @@ module PE_array(
 	PE u2_PE(
 		.clk       (clk),
 		.rst_n     (rst_n),
-		.en        (en),
+		.en        (1),
 		.data_in   (data_reg2_1),
 		.data_out  (tmp_data[2]),
 		.weight_in (tmp_weight[4]),
@@ -97,7 +117,7 @@ module PE_array(
 	PE u3_PE(
 		.clk       (clk),
 		.rst_n     (rst_n),
-		.en        (en),
+		.en        (1),
 		.data_in   (data_reg3_2),
 		.data_out  (tmp_data[3]),
 		.weight_in (tmp_weight[8]),
@@ -107,7 +127,7 @@ module PE_array(
 	PE u4_PE(
 		.clk       (clk),
 		.rst_n     (rst_n),
-		.en        (en),
+		.en        (1),
 		.data_in   (tmp_data[0]),
 		.data_out  (tmp_data[4]),
 		.weight_in (weight_reg1_0),
@@ -117,7 +137,7 @@ module PE_array(
 	PE u5_PE(
 		.clk       (clk),
 		.rst_n     (rst_n),
-		.en        (en),
+		.en        (1),
 		.data_in   (tmp_data[1]),
 		.data_out  (tmp_data[5]),
 		.weight_in (tmp_weight[1]),
@@ -127,7 +147,7 @@ module PE_array(
 	PE u6_PE(
 		.clk       (clk),
 		.rst_n     (rst_n),
-		.en        (en),
+		.en        (1),
 		.data_in   (tmp_data[2]),
 		.data_out  (tmp_data[6]),
 		.weight_in (tmp_weight[5]),
@@ -137,7 +157,7 @@ module PE_array(
 	PE u7_PE(
 		.clk       (clk),
 		.rst_n     (rst_n),
-		.en        (en),
+		.en        (1),
 		.data_in   (tmp_data[3]),
 		.data_out  (tmp_data[7]),
 		.weight_in (tmp_weight[9]),
@@ -147,7 +167,7 @@ module PE_array(
 	PE u8_PE(
 		.clk       (clk),
 		.rst_n     (rst_n),
-		.en        (en),
+		.en        (1),
 		.data_in   (tmp_data[4]),
 		.data_out  (tmp_data[8]),
 		.weight_in (weight_reg2_1),
@@ -157,7 +177,7 @@ module PE_array(
 	PE u9_PE(
 		.clk       (clk),
 		.rst_n     (rst_n),
-		.en        (en),
+		.en        (1),
 		.data_in   (tmp_data[5]),
 		.data_out  (tmp_data[9]),
 		.weight_in (tmp_weight[2]),
@@ -167,7 +187,7 @@ module PE_array(
 	PE u10_PE(
 		.clk       (clk),
 		.rst_n     (rst_n),
-		.en        (en),
+		.en        (1),
 		.data_in   (tmp_data[6]),
 		.data_out  (tmp_data[10]),
 		.weight_in (tmp_weight[6]),
@@ -177,7 +197,7 @@ module PE_array(
 	PE u11_PE(
 		.clk       (clk),
 		.rst_n     (rst_n),
-		.en        (en),
+		.en        (1),
 		.data_in   (tmp_data[7]),
 		.data_out  (tmp_data[11]),
 		.weight_in (tmp_weight[10]),
@@ -187,7 +207,7 @@ module PE_array(
 	PE u12_PE(
 		.clk       (clk),
 		.rst_n     (rst_n),
-		.en        (en),
+		.en        (1),
 		.data_in   (tmp_data[8]),
 		.data_out  (),
 		.weight_in (weight_reg3_2),
@@ -197,7 +217,7 @@ module PE_array(
 	PE u13_PE(
 		.clk       (clk),
 		.rst_n     (rst_n),
-		.en        (en),
+		.en        (1),
 		.data_in   (tmp_data[9]),
 		.data_out  (),
 		.weight_in (tmp_weight[3]),
@@ -207,7 +227,7 @@ module PE_array(
 	PE u14_PE(
 		.clk       (clk),
 		.rst_n     (rst_n),
-		.en        (en),
+		.en        (1),
 		.data_in   (tmp_data[10]),
 		.data_out  (),
 		.weight_in (tmp_weight[7]),
@@ -217,7 +237,7 @@ module PE_array(
 	PE u15_PE(
 		.clk       (clk),
 		.rst_n     (rst_n),
-		.en        (en),
+		.en        (1),
 		.data_in   (tmp_data[11]),
 		.data_out  (),
 		.weight_in (tmp_weight[11]),

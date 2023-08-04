@@ -35,6 +35,20 @@ input   [1:0]  buf_wr_sel
 
 reg [31:0] data_buf ;
 reg  wr_en;
+
+reg nice_icb_cmd_read_buf0 , nice_icb_cmd_read_buf1 , nice_icb_cmd_read_buf2;
+reg [31:0] nice_icb_cmd_addr_buf0 , nice_icb_cmd_addr_buf1 ,nice_icb_cmd_addr_buf2;
+
+always @ (posedge nice_clk) begin
+    nice_icb_cmd_read_buf2 <= nice_icb_cmd_read_buf1;
+    nice_icb_cmd_read_buf1 <= nice_icb_cmd_read_buf0;
+    nice_icb_cmd_read_buf0 <= (state != 2'b11);
+    nice_icb_cmd_addr_buf2 <= nice_icb_cmd_addr_buf1;
+    nice_icb_cmd_addr_buf1 <= nice_icb_cmd_addr_buf0;
+    nice_icb_cmd_addr_buf0 <= dst_base_addr + bias_addr*4;
+
+end
+
 assign nice_icb_cmd_valid = (state == 2'b01) ? data_in_acq :
                             (state == 2'b10) ? data_in_acq :
                             (state == 2'b11) ? data_out_rdy :
@@ -45,10 +59,10 @@ assign nice_icb_cmd_addr = (state == 2'b10) ? lhs_base_addr + bias_addr*4:
                            ((state == 2'b01)&&(buf_wr)&&(buf_wr_sel == 2'b00)) ? dst_shifts_addr + {28'b0,bias_addr[12:9]}*4:
                            ((state == 2'b01)&&(buf_wr)&&(buf_wr_sel == 2'b01)) ? dst_multi_addr + {28'b0,bias_addr[12:9]}*4:
                            ((state == 2'b01)&&(buf_wr)&&(buf_wr_sel == 2'b10)) ? lhs_bias_addr + {28'b0,bias_addr[12:9]}*4:
-                           (state == 2'b11) ? dst_base_addr + bias_addr*4:
+                           (state == 2'b11) ? nice_icb_cmd_addr_buf2:
                            32'b0;
 
-assign nice_icb_cmd_read = (state == 2'b11) ? 0 : 1; 
+assign nice_icb_cmd_read = (state != 2'b11) ? 1 : nice_icb_cmd_read_buf2; 
 
 assign nice_icb_cmd_wdata = (state == 2'b11) ? data : 'hz;
 

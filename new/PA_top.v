@@ -41,7 +41,7 @@ wire    PA_en;
 wire    ram_wr;
 
 wire    pingpang_rd;
-
+wire    act_en;
 
 //u_pingpangbuffer
 wire    data_wr_acq;
@@ -71,6 +71,14 @@ reg  [31:0]     dst_multi_buf   [15:0];
 reg  [31:0]     dst_shifts_buf  [15:0];
 
 reg  [31:0]     rhs_row_sum     [15:0];
+
+
+
+reg  buf_wr_reg;
+
+always @(posedge clk) begin
+    buf_wr_reg <= buf_wr;
+end
 
 always @ (posedge clk or negedge rst_n) begin
   if (!rst_n) begin
@@ -118,14 +126,14 @@ always @ (posedge clk or negedge rst_n) begin
             bias_buf[15] <= 32'b0; dst_multi_buf[15] <= 32'b0; dst_shifts_buf[15] <= 32'b0;
             
   end
-  else if (buf_wr) begin
-        if (buf_wr_sel == 2'b00) begin
+  else if (buf_wr_reg) begin
+        if (buf_wr_sel == 2'b01) begin
             dst_shifts_buf [wr_RAM_addr[12:9]] <= data;
         end
-        else if (buf_wr_sel == 2'b01) begin
+        else if (buf_wr_sel == 2'b10) begin
             dst_multi_buf [wr_RAM_addr[12:9]] <= data;
         end
-        else if (buf_wr_sel == 2'b10) begin
+        else if (buf_wr_sel == 2'b00) begin
             bias_buf [wr_RAM_addr[12:9]] <= data;
         end
   end
@@ -194,6 +202,7 @@ PA_SM u_statemachine(
     .state          (state),
     .buf_wr         (buf_wr),
     .buf_wr_sel     (buf_wr_sel),
+    .act_en         (act_en),
 
     .PA_rst_n       (PA_rst_n)
 );
@@ -234,6 +243,12 @@ PA_RAM #(13,8,16) u_PA_RAM (
     .rhs_cols       (rhs_cols),
     .we             (ram_wr_in)  
 );
+
+reg  rhs_sum_en;
+always @(posedge clk) begin
+    rhs_sum_en <= PA_en;
+end
+
 genvar i;
 generate
 for (i = 0 ; i<16 ; i= i+1) begin
@@ -246,7 +261,7 @@ always @ (posedge clk or negedge rst_n) begin
 //            end
 //        endgenerate
     end
-    else if (PA_en) begin
+    else if (rhs_sum_en) begin
 //        genvar i;
 //        generate
             
@@ -254,6 +269,7 @@ always @ (posedge clk or negedge rst_n) begin
             
 //        endgenerate
     end
+    
 end
 end
 endgenerate
@@ -287,14 +303,14 @@ generate
             .clk       (clk),
             .rst_n     (PA_rst_n),
             .en        (PA_en_in),
-            .data_in0  (databuffer_rdata[0]),
-            .data_in1  (databuffer_rdata[1]),
-            .data_in2  (databuffer_rdata[2]),
-            .data_in3  (databuffer_rdata[3]),
-            .weight_in0(weightram_rdata[i]),
-            .weight_in1(weightram_rdata[i+4]),
-            .weight_in2(weightram_rdata[i+8]),
-            .weight_in3(weightram_rdata[i+12]),
+            .data_in0_w  (databuffer_rdata[0]),
+            .data_in1_w  (databuffer_rdata[1]),
+            .data_in2_w  (databuffer_rdata[2]),
+            .data_in3_w  (databuffer_rdata[3]),
+            .weight_in0_w(weightram_rdata[i]),
+            .weight_in1_w(weightram_rdata[i+4]),
+            .weight_in2_w(weightram_rdata[i+8]),
+            .weight_in3_w(weightram_rdata[i+12]),
             .out_sel   (out_sel),
             .result    (PE_result[i])
             );
@@ -340,6 +356,8 @@ generate
         );
 
         requantize_activation u_requantize_activation(
+            .clk            (clk),
+            .act_en         (act_en),
             .res_in         (PE_result[i]),
             .dst_multi      (dst_multi_sel[i]),
             .dst_shifts     (dst_shifts_sel[i]),

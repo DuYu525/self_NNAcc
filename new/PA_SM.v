@@ -26,6 +26,8 @@ module PA_SM(
     output  wire [1:0] buf_wr_sel,
     output  wire [1:0] state,
     output  wire rstn_row_sum,
+    output  wire act_en,
+
     output  reg PA_rst_n
 );
 
@@ -33,7 +35,7 @@ module PA_SM(
 
 reg weight_rd_acq ;
 reg dst_wr_rdy ;
-reg [3:0] counter_Result;
+reg [4:0] counter_Result;
 reg [31:0] counter_Rhs_rows;
 reg [31:0] counter_Lhs_rows;
 reg [31:0] counter_Rhs_cols;
@@ -51,6 +53,8 @@ assign mem_bias_addr = (state == 2'b01) ? (counter_Rhs_rows * rhs_cols/4 + count
                      (state == 2'b11) ? ((counter_Rhs_rows-16)/4*lhs_rows + (counter_Lhs_rows-4)*4 +{28'b0,counter_Result}):0;
 
 assign buf_bias_addr = counter_Rhs_rows;
+
+assign act_en = (state == 2'b11);
 
 
 always @ (posedge clk or negedge counter_rst_n[0]) begin
@@ -78,9 +82,18 @@ always @(posedge clk or negedge rst_n) begin
 end
 assign ram_wr = weight_rd_rdy & weight_rd_acq & (counter_Rhs_cols < rhs_cols);
 assign buf_wr = weight_rd_rdy & weight_rd_acq & (counter_Rhs_cols >= rhs_cols/4);
-assign result_addr = counter_Result;
+assign result_addr = counter_Result[3:0];
 assign out_weight_rd_acq = weight_rd_acq;
-assign out_dst_wr_rdy = dst_wr_rdy;
+assign out_dst_wr_rdy = dst_wr_rdy_buf2;
+
+reg dst_wr_rdy_buf0 , dst_wr_rdy_buf1 ,dst_wr_rdy_buf2;
+
+always @ (posedge clk) begin
+    dst_wr_rdy_buf2 <= dst_wr_rdy_buf1;
+    dst_wr_rdy_buf1 <= dst_wr_rdy_buf0;
+    dst_wr_rdy_buf0 <= dst_wr_rdy;
+end
+
 
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -146,7 +159,7 @@ end
 
 always @ (posedge clk or negedge counter_rst_n[3]) begin
     if (~counter_rst_n[3]) begin
-        counter_Result <= 4'b0;
+        counter_Result <= 5'b0;
     end
     else if (dst_wr_rdy & dst_wr_acq) begin
         counter_Result <= counter_Result + 1;
@@ -297,7 +310,7 @@ always @ (*) begin
                     end 
                 end
         2'b11 : begin
-                     if (counter_Result == 4'b1111)begin
+                     if (counter_Result == 5'b10010)begin
                         if ((counter_Rhs_rows == rhs_rows)&&(counter_Lhs_rows == lhs_rows)) begin
                             next_state = 2'b00;
                         end

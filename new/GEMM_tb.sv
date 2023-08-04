@@ -105,18 +105,27 @@ module GEMM_tb  (
             end
             //bias
             lhs_bias_addr = 32*32*2;
-            for (i = 32*32*2 ; i<32*32*2+31; i=i+1) begin
-                mem_tb [i] = 1;
+            for (i = 32*32*2 ; i<32*32*2+31; i=i+4) begin
+                mem_tb [i] = 0;
+                mem_tb [i+1] = 0;
+                mem_tb [i+2] = 0;
+                mem_tb [i+3] = 1;
             end
             //dst_multi
             dst_multi_addr = 32*32*2 + 32;
-            for (i = 32*32*2 + 32; i<32*32*2+63; i=i+1) begin
-                mem_tb [i] = 100000;
+            for (i = 32*32*2 + 32; i<32*32*2+63; i=i+4) begin
+                mem_tb [i] = 0;
+                mem_tb [i+1] = 8'hff;
+                mem_tb [i+2] = 8'h86;
+                mem_tb [i+3] = 8'ha0;
             end
             //dst_shifts
             dst_shifts_addr = 32*32*2 + 64;
-            for (i = 32*32*2 + 64; i<32*32*2+95; i=i+1) begin
-                mem_tb [i] = 1;
+            for (i = 32*32*2 + 64; i<32*32*2+95; i=i+4) begin
+                mem_tb [i] = 0;
+                mem_tb [i+1] = 0;
+                mem_tb [i+2] = 0;
+                mem_tb [i+3] = 2;
             end
             //dst _addr: 32*32*3
             dst_addr = 32*32*3;
