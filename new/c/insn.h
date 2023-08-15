@@ -81,6 +81,22 @@ __STATIC_FORCEINLINE void matrix_multi (q7_t *dst)
     return ;
 };
 
+riscv_status riscv_nn_mat_nice_multi_nt_t_s8(
+                                   const q7_t *lhs,
+                                   const q7_t *rhs,
+                                   const q31_t *bias,
+                                   q7_t *dst,
+                                   const int32_t *dst_multipliers,
+                                   const int32_t *dst_shifts,
+                                   const int32_t lhs_rows,
+                                   const int32_t rhs_rows,
+                                   const int32_t rhs_cols,
+                                   const int32_t lhs_offset,
+                                   const int32_t dst_offset,
+                                   const int32_t activation_min,
+                                   const int32_t activation_max
+);
+
 
 #ifdef _cplusplus
 }

@@ -20,6 +20,45 @@ riscv_status riscv_nn_mat_nice_multi_nt_t_s8(
                                    const int32_t activation_max
 )
 {
+    int N = 1024*1024;
+    q7_t *lhs_in = (q7_t*)malloc(sizeof(q7_t) * N);
+    q7_t *rhs_in = (q7_t*)malloc(sizeof(q7_t) * N);
+    q7_t *dst_out = (q7_t*)malloc(sizeof(q7_t) * N);
+
+
+    int32_t lhs_rows_in = lhs_rows;
+    int32_t rhs_rows_in = rhs_rows;
+
+
+    int i , j , k;
+
+    //lhs_padding
+    for (i = 0; i < lhs_rows; i++){
+        for (j = 0; j < rhs_cols; j++){
+            lhs_in[i*rhs_cols + j] = lhs[i*rhs_cols + j];
+        };
+    };
+    if (lhs_rows % 4 != 0)
+    {
+        lhs_rows_in = lhs_rows + 4 - (lhs_rows % 4);
+        for (k = 0; k < (lhs_rows % 4)*rhs_cols; k++){
+            lhs_in[i*rhs_cols + k] = 0;
+        };
+    };
+
+    //rhs_padding
+    for (i = 0; i < rhs_rows; i++){
+        for (j = 0; j < rhs_cols; j++){
+            rhs_in[i*rhs_cols + j] = rhs[i*rhs_cols + j];
+        };
+    };
+    if (rhs_rows % 16 != 0)
+    {
+        rhs_rows_in = rhs_rows + 16 - (rhs_rows % 16);
+        for (k = 0; k < (rhs_rows % 16)*rhs_cols; k++){
+            rhs_in[i*rhs_cols + k] = 0;
+        };
+    };
 
     int begin_instruct = __get_rv_instret();
     int begin_cycle = __get_rv_cycle();
@@ -41,9 +80,9 @@ riscv_status riscv_nn_mat_nice_multi_nt_t_s8(
     int begin_cycle0 = __get_rv_cycle();
     
 
-    para_in0 (rhs_rows, lhs_rows);
+    para_in0 (rhs_rows_in, lhs_rows_in);
     para_in1 (rhs_cols, *bias);
-    para_in2 (*lhs, *rhs);
+    para_in2 (*lhs_in, *rhs_in);
     para_in3 (lhs_offset, dst_offset);
     para_in4 (activation_min, activation_max);
     para_in5 (*dst_multipliers, *dst_shifts);
@@ -59,4 +98,15 @@ riscv_status riscv_nn_mat_nice_multi_nt_t_s8(
     printf ("\t cycle: %u\r\n",num_cycle0);
     printf ("\t instruction: %u\r\n",num_instruc0);
 
-};
+    //get result
+    if ((rhs_rows % 16 != 0) || (lhs_rows % 4 != 0))
+    {
+        for (i = 0; i < lhs_rows; i++){
+            for (j = 0; j < rhs_rows; j++){
+                dst [i*rhs_rows + j] = dst [i*rhs_rows_in+j];
+            };
+        };
+    }
+
+    return RISCV_MATH_SUCCESS;    
+}
